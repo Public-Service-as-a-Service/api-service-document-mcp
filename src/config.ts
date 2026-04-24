@@ -9,6 +9,7 @@ const ConfigSchema = z.object({
   logLevel: z
     .enum(["trace", "debug", "info", "warn", "error"])
     .default("info"),
+  enableReportingTools: z.boolean().default(false),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;
@@ -21,5 +22,10 @@ export function loadConfig(): Config {
     oauth2ClientId: process.env.OAUTH2_CLIENT_ID,
     oauth2ClientSecret: process.env.OAUTH2_CLIENT_SECRET,
     logLevel: process.env.LOG_LEVEL,
+    enableReportingTools: parseBool(process.env.ENABLE_REPORTING_TOOLS),
   });
+}
+
+function parseBool(value: string | undefined): boolean {
+  return value === "true" || value === "1";
 }

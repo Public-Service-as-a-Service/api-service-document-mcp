@@ -5,13 +5,14 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "bin": {
     "api-service-document-mcp": "dist/index.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "generate:types": "openapi-typescript ../api-service-document/src/main/resources/api/openapi.yaml -o src/generated/documentApiTypes.ts",
     "start": "node dist/index.js",
     "dev": "tsx watch src/index.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
@@ -25,6 +26,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
+    "openapi-typescript": "^7.13.0",
     "tsx": "^4.19.0",
     "typescript": "^5.6.0",
     "vitest": "^2.1.0"
