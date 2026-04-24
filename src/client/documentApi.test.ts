@@ -43,6 +43,46 @@ describe("DocumentApiClient", () => {
     expect(searchCall?.url.searchParams.has("limit")).toBe(false);
   });
 
+  it("filters internal documents with structured parameters", async () => {
+    const calls: RecordedCall[] = [];
+    const client = new DocumentApiClient(config, createRequester(calls, {
+      documents: [],
+      _meta: {
+        page: 1,
+        limit: 10,
+        count: 0,
+        totalRecords: 0,
+        totalPages: 0,
+      },
+    }));
+
+    await client.filterDocuments({
+      createdBy: "user-1",
+      responsiblePersonId: "user-2",
+      statuses: ["SCHEDULED"],
+      documentTypes: ["RULE"],
+      page: 0,
+      size: 10,
+    });
+
+    const filterCall = calls[1];
+    expect(filterCall?.method).toBe("POST");
+    expect(filterCall?.url.pathname).toBe("/api/2281/documents/filter");
+    expect(filterCall?.headers["content-type"]).toBe("application/json");
+    expect(JSON.parse(filterCall?.body ?? "{}")).toEqual({
+      page: 1,
+      limit: 10,
+      includeConfidential: false,
+      onlyLatestRevision: true,
+      sortBy: ["created"],
+      sortDirection: "DESC",
+      createdBy: "user-1",
+      responsibilities: [{ personId: "user-2" }],
+      statuses: ["SCHEDULED"],
+      documentTypes: ["RULE"],
+    });
+  });
+
   it("reuses an access token across API calls", async () => {
     const calls: RecordedCall[] = [];
     const client = new DocumentApiClient(config, createRequester(calls, {

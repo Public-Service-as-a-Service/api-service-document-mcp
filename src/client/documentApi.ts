@@ -6,6 +6,8 @@ import { undiciRequester } from "./http.js";
 type SearchQuery = operations["search"]["parameters"]["query"];
 type SearchFileMatchesQuery =
   operations["searchFileMatches"]["parameters"]["query"];
+type FilterDocumentsBody =
+  operations["searchByParameters"]["requestBody"]["content"]["application/json"];
 type ReadDocumentQuery = NonNullable<
   operations["read"]["parameters"]["query"]
 >;
@@ -25,6 +27,15 @@ export type SearchFileMatchesParams = Pick<
   SearchFileMatchesQuery,
   "query" | "page" | "size"
 >;
+
+export type FilterDocumentsParams = {
+  createdBy?: string;
+  responsiblePersonId?: string;
+  statuses?: NonNullable<FilterDocumentsBody["statuses"]>;
+  documentTypes?: string[];
+  page?: number;
+  size?: number;
+};
 
 export type ReadDocumentParams = {
   registrationNumber: string;
@@ -82,6 +93,40 @@ export class DocumentApiClient {
     }
 
     return this.getJson<DocumentSearchResponse>(url, "document-api search");
+  }
+
+  async filterDocuments(
+    params: FilterDocumentsParams,
+  ): Promise<DocumentSearchResponse> {
+    const body: FilterDocumentsBody = {
+      page: (params.page ?? 0) + 1,
+      includeConfidential: false,
+      onlyLatestRevision: true,
+      sortBy: ["created"],
+      sortDirection: "DESC",
+    };
+
+    if (params.size !== undefined) {
+      body.limit = params.size;
+    }
+    if (params.createdBy !== undefined) {
+      body.createdBy = params.createdBy;
+    }
+    if (params.responsiblePersonId !== undefined) {
+      body.responsibilities = [{ personId: params.responsiblePersonId }];
+    }
+    if (params.statuses !== undefined && params.statuses.length > 0) {
+      body.statuses = params.statuses;
+    }
+    if (params.documentTypes !== undefined && params.documentTypes.length > 0) {
+      body.documentTypes = params.documentTypes;
+    }
+
+    return this.postJson<DocumentSearchResponse>(
+      this.documentUrl("/documents/filter"),
+      body,
+      "document-api filter documents",
+    );
   }
 
   async searchFileMatches(
@@ -195,20 +240,35 @@ export class DocumentApiClient {
   }
 
   private async getJson<T>(url: URL, operation: string): Promise<T> {
-    const headers: Record<string, string> = {
-      accept: "application/json",
-    };
-    if (this.config.documentApiAuthMode === "oauth2") {
-      headers.authorization = `Bearer ${await this.getAccessToken()}`;
-    }
-
     const response = await this.requester(url, {
       method: "GET",
-      headers,
+      headers: await this.jsonHeaders(),
     });
 
     await assertSuccess(response, operation);
     return (await response.body.json()) as T;
+  }
+
+  private async postJson<T>(url: URL, body: unknown, operation: string): Promise<T> {
+    const response = await this.requester(url, {
+      method: "POST",
+      headers: await this.jsonHeaders({ "content-type": "application/json" }),
+      body: JSON.stringify(body),
+    });
+
+    await assertSuccess(response, operation);
+    return (await response.body.json()) as T;
+  }
+
+  private async jsonHeaders(extra?: Record<string, string>): Promise<Record<string, string>> {
+    const headers: Record<string, string> = {
+      accept: "application/json",
+      ...extra,
+    };
+    if (this.config.documentApiAuthMode === "oauth2") {
+      headers.authorization = `Bearer ${await this.getAccessToken()}`;
+    }
+    return headers;
   }
 
   private async getAccessToken(): Promise<string> {

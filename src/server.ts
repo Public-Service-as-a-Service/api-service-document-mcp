@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { Config } from "./config.js";
 import { DocumentApiClient } from "./client/documentApi.js";
+import { createFilterDocumentsTool } from "./tools/filterDocuments.js";
 import { createGetDocumentTool } from "./tools/getDocument.js";
 import { createGetDocumentRevisionsTool } from "./tools/getDocumentRevisions.js";
 import { createListDocumentTypesTool } from "./tools/listDocumentTypes.js";
@@ -17,6 +18,7 @@ export function createServer(config: Config): McpServer {
   });
 
   const tools: ToolDefinition<any>[] = [
+    createFilterDocumentsTool(client),
     createSearchDocumentsTool(client),
     createSearchFileMatchesTool(client),
     createGetDocumentTool(client),
