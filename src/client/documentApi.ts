@@ -195,13 +195,16 @@ export class DocumentApiClient {
   }
 
   private async getJson<T>(url: URL, operation: string): Promise<T> {
-    const token = await this.getAccessToken();
+    const headers: Record<string, string> = {
+      accept: "application/json",
+    };
+    if (this.config.documentApiAuthMode === "oauth2") {
+      headers.authorization = `Bearer ${await this.getAccessToken()}`;
+    }
+
     const response = await this.requester(url, {
       method: "GET",
-      headers: {
-        authorization: `Bearer ${token}`,
-        accept: "application/json",
-      },
+      headers,
     });
 
     await assertSuccess(response, operation);
@@ -214,12 +217,21 @@ export class DocumentApiClient {
       return this.cachedToken.accessToken;
     }
 
+    const tokenUrl = this.config.oauth2TokenUrl;
+    const clientId = this.config.oauth2ClientId;
+    const clientSecret = this.config.oauth2ClientSecret;
+    if (!tokenUrl || !clientId || !clientSecret) {
+      throw new Error(
+        "OAuth2 credentials missing — check OAUTH2_TOKEN_URL / OAUTH2_CLIENT_ID / OAUTH2_CLIENT_SECRET",
+      );
+    }
+
     const form = new URLSearchParams({
       grant_type: "client_credentials",
-      client_id: this.config.oauth2ClientId,
-      client_secret: this.config.oauth2ClientSecret,
+      client_id: clientId,
+      client_secret: clientSecret,
     });
-    const response = await this.requester(this.config.oauth2TokenUrl, {
+    const response = await this.requester(tokenUrl, {
       method: "POST",
       headers: { "content-type": "application/x-www-form-urlencoded" },
       body: form.toString(),

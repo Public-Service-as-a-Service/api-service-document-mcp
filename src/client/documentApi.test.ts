@@ -4,8 +4,11 @@ import type { HttpRequester } from "./http.js";
 import type { Config } from "../config.js";
 
 const config: Config = {
+  transport: "stdio",
+  httpPort: 3000,
   documentApiBaseUrl: "https://document.example/api/",
   municipalityId: "2281",
+  documentApiAuthMode: "oauth2",
   oauth2TokenUrl: "https://auth.example/token",
   oauth2ClientId: "client-id",
   oauth2ClientSecret: "client-secret",
@@ -127,6 +130,27 @@ describe("DocumentApiClient", () => {
       "budget",
       "förslag",
     ]);
+  });
+
+  it("skips the oauth2 token flow when documentApiAuthMode is 'none'", async () => {
+    const calls: RecordedCall[] = [];
+    const noAuthConfig: Config = {
+      ...config,
+      documentApiAuthMode: "none",
+      oauth2TokenUrl: undefined,
+      oauth2ClientId: undefined,
+      oauth2ClientSecret: undefined,
+    };
+    const client = new DocumentApiClient(
+      noAuthConfig,
+      createRequester(calls, []),
+    );
+
+    await client.listDocumentTypes();
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.url.pathname).toBe("/api/2281/admin/documenttypes");
+    expect(calls[0]?.headers.authorization).toBeUndefined();
   });
 
   it("surfaces non-2xx responses with operation context", async () => {
